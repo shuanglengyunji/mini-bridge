@@ -8,8 +8,6 @@ CURRENT_PATH := $(shell realpath --relative-to=$(TOP) `pwd`)
 
 include ./make.mk
 
-FREERTOS_SRC = lib/FreeRTOS-Kernel
-
 # Application source
 SRC_C += $(addprefix $(CURRENT_PATH)/, $(wildcard src/*.c))
 
