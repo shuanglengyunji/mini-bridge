@@ -67,6 +67,10 @@ $(BUILD)/$(PROJECT).hex: $(BUILD)/$(PROJECT).elf
 	@echo CREATE $@
 	@$(OBJCOPY) -O ihex $^ $@
 
+.PHONY: web
+web: 
+	cd web && ./makefsdata && cp ./fsdata.c ../src/asset/fsdata_mb.c
+
 # We set vpath to point to the top of the tree so that the source files
 # can be located. By following this scheme, it allows a single build rule
 # to be used to compile all .c files.
