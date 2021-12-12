@@ -9,11 +9,11 @@ CURRENT_PATH := $(shell realpath --relative-to=$(TOP) `pwd`)
 include ./make.mk
 
 # Application source
-SRC_C += $(addprefix $(CURRENT_PATH)/, $(wildcard src/*.c))
-
 INC += \
 	src \
-	src/FreeRTOSConfig \
+	src/FreeRTOSConfig
+
+SRC_C += $(addprefix $(CURRENT_PATH)/, $(wildcard src/*.c))
 
 # FreeRTOS source, all files in port folder
 INC += \
