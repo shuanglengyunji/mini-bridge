@@ -77,7 +77,7 @@ StaticTask_t usb_taskdef;
 void usb_task(void* param);
 
 // network task
-#define NET_STACK_SZIE      configMINIMAL_STACK_SIZE
+#define NET_STACK_SZIE      2048
 StackType_t  net_stack[NET_STACK_SZIE];
 StaticTask_t net_taskdef;
 void net_task(void* params);
@@ -261,7 +261,25 @@ static void init_lwip(void)
   netif_set_default(netif);
 }
 
-uint8_t ucRxData[ 2048 ];
+/** This basic CGI function can parse param/value pairs and return an url that
+ * is sent as a response by httpd.
+ */
+static const char * cgi_handler_basic(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+{
+  for (int i=0; i<iNumParams; i++)
+  {
+    printf("%d %s %s\n", i, pcParam[i], pcValue[i]);
+  }
+  return "/index.html";
+}
+
+static const tCGI cgi_handlers[] = {
+  {
+    "/text_cgi",
+    cgi_handler_basic
+  }
+};
+
 void net_task(void* params)
 {
   (void) params;
@@ -269,6 +287,8 @@ void net_task(void* params)
   init_lwip();
   while (!netif_is_up(&netif_data));
   while (dhserv_init(&dhcp_config) != ERR_OK);
+
+  http_set_cgi_handlers(cgi_handlers, LWIP_ARRAYSIZE(cgi_handlers));
   httpd_init();
 
   // RTOS forever loop
