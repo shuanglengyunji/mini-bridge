@@ -273,9 +273,7 @@ $(BUILD)/$(PROJECT).hex: $(BUILD)/$(PROJECT).elf
 	@echo CREATE $@
 	@$(OBJCOPY) -O ihex $^ $@
 
-.PHONY: web
-web: 
-	cd web && ./makefsdata && cp ./fsdata.c ../src/asset/fsdata_mb.c
+
 
 # We set vpath to point to the top of the tree so that the source files
 # can be located. By following this scheme, it allows a single build rule
@@ -306,9 +304,12 @@ size: $(BUILD)/$(PROJECT).elf
 linkermap: $(BUILD)/$(PROJECT).elf
 	@linkermap -v $<.map
 
-.PHONY: clean
+.PHONY: clean web
 clean:
 	$(RM) -rf $(BUILD)
+
+web: 
+	cd web && ./makefsdata && cp ./fsdata.c ../src/asset/fsdata_mb.c
 
 # ---------------------------------------
 # Flash Targets
@@ -317,3 +318,10 @@ clean:
 # Flash STM32 MCU using stlink with STM32 Cube Programmer CLI
 flash-stlink: $(BUILD)/$(PROJECT).elf
 	STM32_Programmer_CLI --connect port=swd --write $< --go
+
+# flash target ROM bootloader
+flash-dfu: $(BUILD)/$(PROJECT).bin
+	dfu-util -R -a 0 --dfuse-address 0x08000000 -D $<
+
+# flash target using on-board stlink
+flash: flash-stlink

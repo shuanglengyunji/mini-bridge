@@ -4,7 +4,7 @@ DEPS_SUBMODULES += lib/CMSIS_5 lib/cmsis_device_$(ST_FAMILY) lib/stm32$(ST_FAMIL
 ST_CMSIS = lib/cmsis_device_$(ST_FAMILY)
 ST_HAL_DRIVER = lib/stm32$(ST_FAMILY)xx_hal_driver
 
-LD_FILE = $(addprefix $(CURRENT_PATH)/, $(BOARD)/STM32F401VCTx_FLASH.ld)
+LD_FILE = $(BOARD)/STM32F401VCTx_FLASH.ld
 
 CFLAGS += \
   -flto \
@@ -39,10 +39,3 @@ INC += \
 
 # For freeRTOS port source
 FREERTOS_PORT = ARM_CM4F
-
-# flash target using on-board stlink
-flash: flash-stlink
-
-# # flash target ROM bootloader
-# flash: $(BUILD)/$(PROJECT).bin
-# 	dfu-util -R -a 0 --dfuse-address 0x08000000 -D $<
