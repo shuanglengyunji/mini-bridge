@@ -105,7 +105,7 @@ static const char * cgi_handler_basic(int iIndex, int iNumParams, char *pcParam[
   {
     printf("%d %s %s\n", i, pcParam[i], pcValue[i]);
   }
-  return "/index.html";
+  return "/index.shtml";
 }
 
 static const tCGI cgi_handlers[] = {
@@ -114,6 +114,35 @@ static const tCGI cgi_handlers[] = {
     cgi_handler_basic
   }
 };
+
+size_t print_ip4_addr_t(char* dst, int max_len, ip4_addr_t ip)
+{
+  return snprintf(dst, max_len, "%ld.%ld.%ld.%ld", ip.addr & 0xFF, (ip.addr>>8) & 0xFF, (ip.addr>>16) & 0xFF, ip.addr>>24);
+}
+
+u16_t ssi_handler(const char* ssi_tag_name, char *pcInsert, int iInsertLen)
+{
+  if (!strcmp(ssi_tag_name, "SERADD"))
+  {
+    return (u16_t)print_ip4_addr_t(pcInsert, iInsertLen, ipaddr);
+  } 
+  else if (!strcmp(ssi_tag_name, "SERPORT"))
+  {
+    return (u16_t)snprintf(pcInsert, iInsertLen, "%d", 8000);
+  }
+  else if (!strcmp(ssi_tag_name, "DESTADD"))
+  {
+    return (u16_t)print_ip4_addr_t(pcInsert, iInsertLen, ipaddr);
+  }
+  else if (!strcmp(ssi_tag_name, "DESTPORT"))
+  {
+    return (u16_t)snprintf(pcInsert, iInsertLen, "%d", 8000);
+  }
+  else
+  {
+    return (u16_t)snprintf(pcInsert, iInsertLen, "Error: Known tag");
+  }
+}
 
 void net_task(void* params)
 {
@@ -124,6 +153,7 @@ void net_task(void* params)
   while (dhserv_init(&dhcp_config) != ERR_OK);
 
   http_set_cgi_handlers(cgi_handlers, LWIP_ARRAYSIZE(cgi_handlers));
+  http_set_ssi_handler(ssi_handler, NULL, 0);
   httpd_init();
 
   // RTOS forever loop
