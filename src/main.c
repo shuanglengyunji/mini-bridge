@@ -43,6 +43,8 @@
 #include "lwip/timeouts.h"
 #include "httpd.h"
 
+#include "udpserver.h"
+
 // Increase stack size when debug log is enabled
 #define USBD_STACK_SIZE    (3*configMINIMAL_STACK_SIZE/2) * (CFG_TUSB_DEBUG ? 2 : 1)
 
@@ -271,6 +273,8 @@ void net_task(void* params)
   while (dhserv_init(&dhcp_config) != ERR_OK);
   httpd_init();
 
+  udp_echoserver_init();
+  
   // RTOS forever loop
   while ( 1 )
   {
