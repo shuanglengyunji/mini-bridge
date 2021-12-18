@@ -97,7 +97,7 @@ static void init_lwip(void)
 /** This basic CGI function can parse param/value pairs and return an url that
  * is sent as a response by httpd.
  */
-static const char * cgi_handler_basic(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
+static const char * cgi_handler(int iIndex, int iNumParams, char *pcParam[], char *pcValue[])
 {
   (void) iIndex;
 
@@ -111,7 +111,7 @@ static const char * cgi_handler_basic(int iIndex, int iNumParams, char *pcParam[
 static const tCGI cgi_handlers[] = {
   {
     "/text_cgi",
-    cgi_handler_basic
+    cgi_handler
   }
 };
 
@@ -148,6 +148,10 @@ void net_task(void* params)
 {
   (void) params;
 
+#if (LWIP_STATS_DISPLAY != 0)
+  uint32_t last_display = 0;
+#endif /* LWIP_STATS_DISPLAY */
+
   init_lwip();
   while (!netif_is_up(&netif_data));
   while (dhserv_init(&dhcp_config) != ERR_OK);
@@ -171,8 +175,15 @@ void net_task(void* params)
       }
       pbuf_free(p);
     }
-
     sys_check_timeouts();
+
+#if (LWIP_STATS_DISPLAY != 0)
+    if (board_millis() > last_display + LWIP_STATS_DISPLAY_PERIOD_MS)
+    {
+      stats_display();
+      last_display = board_millis();
+    }
+#endif /* LWIP_STATS_DISPLAY */
   }
 }
 
