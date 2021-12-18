@@ -185,6 +185,8 @@ void net_task(void* params)
       last_display = current_ms;
     }
 #endif /* LWIP_STATS_DISPLAY */
+
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
