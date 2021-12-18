@@ -178,10 +178,11 @@ void net_task(void* params)
     sys_check_timeouts();
 
 #if (LWIP_STATS_DISPLAY != 0)
-    if (board_millis() > last_display + LWIP_STATS_DISPLAY_PERIOD_MS)
+    uint32_t current_ms = board_millis();
+    if (current_ms > last_display + LWIP_STATS_DISPLAY_PERIOD_MS || current_ms < last_display)
     {
       stats_display();
-      last_display = board_millis();
+      last_display = current_ms;
     }
 #endif /* LWIP_STATS_DISPLAY */
   }
