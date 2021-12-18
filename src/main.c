@@ -29,7 +29,35 @@
 #include "lwip/pbuf.h"
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+
+// Heap space for freertos task's dynamic memory allocation 
 uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+
+//--------------------------------------------------------------------+
+// FREERTOS STATS TASK
+//--------------------------------------------------------------------+
+
+// Freertos stats task
+void freertos_stats_task(void * param)
+{
+  (void) param;
+
+  char buffer[40 * 5];
+  uint32_t last_display = 0;
+  
+  while (1)
+  {
+    uint32_t current_ms = board_millis();
+    if (current_ms >= last_display + 5000 || current_ms < last_display)
+    {
+      vTaskList(buffer);
+      printf("Name\tState\tPriority\tFree\tId\n");
+      printf("%s\n", buffer);
+      last_display = current_ms;
+    } 
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
 #endif
 
 //--------------------------------------------------------------------+
@@ -145,34 +173,6 @@ void usb_task(void* param)
     tud_task();
   }
 }
-
-#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-//--------------------------------------------------------------------+
-// FREERTOS STATS TASK
-//--------------------------------------------------------------------+
-
-// Freertos stats task
-void freertos_stats_task(void * param)
-{
-  (void) param;
-
-  char buffer[40 * 5];
-  uint32_t last_display = 0;
-  
-  while (1)
-  {
-    uint32_t current_ms = board_millis();
-    if (current_ms >= last_display + 5000 || current_ms < last_display)
-    {
-      vTaskList(buffer);
-      printf("Name\tState\tPriority\tFree\tId\n");
-      printf("%s\n", buffer);
-      last_display = current_ms;
-    } 
-    vTaskDelay(pdMS_TO_TICKS(1));
-  }
-}
-#endif
 
 //--------------------------------------------------------------------+
 // Main
