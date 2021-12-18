@@ -124,6 +124,7 @@ SRC_C += \
 	lib/FreeRTOS-Kernel/tasks.c \
 	lib/FreeRTOS-Kernel/timers.c \
   lib/FreeRTOS-Kernel/stream_buffer.c \
+  lib/FreeRTOS-Kernel/portable/MemMang/heap_4.c \
 	$(wildcard lib/FreeRTOS-Kernel/portable/GCC/$(FREERTOS_PORT)/*.c)
 
 # lwip sources

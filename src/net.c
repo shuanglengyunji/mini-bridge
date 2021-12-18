@@ -7,7 +7,7 @@
 #include "httpd.h"
 
 // network task
-#define NET_STACK_SZIE      2048
+#define NET_STACK_SZIE      512
 StackType_t  net_stack[NET_STACK_SZIE];
 StaticTask_t net_taskdef;
 
@@ -179,7 +179,7 @@ void net_task(void* params)
 
 #if (LWIP_STATS_DISPLAY != 0)
     uint32_t current_ms = board_millis();
-    if (current_ms > last_display + LWIP_STATS_DISPLAY_PERIOD_MS || current_ms < last_display)
+    if (current_ms >= last_display + LWIP_STATS_DISPLAY_PERIOD_MS || current_ms < last_display)
     {
       stats_display();
       last_display = current_ms;

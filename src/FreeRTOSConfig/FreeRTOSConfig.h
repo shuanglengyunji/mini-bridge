@@ -45,6 +45,20 @@
 // Include MCU header
 #include "board_mcu.h"
 
+/* system monitor */
+#define FREERTOS_STATS_DISPLAY                  1
+
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+#define configTIMER_SERVICE_TASK_NAME           "tmr"
+#define configUSE_STATS_FORMATTING_FUNCTIONS    1
+#define configSUPPORT_DYNAMIC_ALLOCATION        1
+#define configTOTAL_HEAP_SIZE                   ( 1*1024 )
+#else
+#define configUSE_STATS_FORMATTING_FUNCTIONS    0
+#define configSUPPORT_DYNAMIC_ALLOCATION        0
+#define configTOTAL_HEAP_SIZE                   ( 0*1024 ) // dynamic is not used
+#endif
+
 extern uint32_t SystemCoreClock;
 
 /* Cortex M23/M33 port configuration. */
@@ -59,7 +73,7 @@ extern uint32_t SystemCoreClock;
 #define configTICK_RATE_HZ                      ( 1000 )
 #define configMAX_PRIORITIES                    ( 5 )
 #define configMINIMAL_STACK_SIZE                ( 128 )
-#define configTOTAL_HEAP_SIZE                   ( 0*1024 ) // dynamic is not used
+// #define configTOTAL_HEAP_SIZE                   ( 0*1024 ) // dynamic is not used
 #define configMAX_TASK_NAME_LEN                 16
 #define configUSE_16_BIT_TICKS                  0
 #define configIDLE_SHOULD_YIELD                 1
@@ -74,7 +88,7 @@ extern uint32_t SystemCoreClock;
 #define configSTACK_ALLOCATION_FROM_SEPARATE_HEAP   0
 
 #define configSUPPORT_STATIC_ALLOCATION         1
-#define configSUPPORT_DYNAMIC_ALLOCATION        0
+// #define configSUPPORT_DYNAMIC_ALLOCATION        0
 
 /* Hook function related definitions. */
 #define configUSE_IDLE_HOOK                    0
@@ -85,7 +99,7 @@ extern uint32_t SystemCoreClock;
 /* Run time and task stats gathering related definitions. */
 #define configGENERATE_RUN_TIME_STATS          0
 #define configUSE_TRACE_FACILITY               1 // legacy trace
-#define configUSE_STATS_FORMATTING_FUNCTIONS   0
+// #define configUSE_STATS_FORMATTING_FUNCTIONS   0
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                  0

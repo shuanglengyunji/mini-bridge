@@ -28,28 +28,75 @@
 
 #include "lwip/pbuf.h"
 
-// led timer
-StaticTimer_t blinky_tmdef;
-TimerHandle_t blinky_tm;
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+#endif
 
-// tinyusb task
-#define USBD_STACK_SIZE    (3*configMINIMAL_STACK_SIZE/2) * (CFG_TUSB_DEBUG ? 2 : 1)  // Increase stack size when debug log is enabled
-StackType_t  usb_stack[USBD_STACK_SIZE];
-StaticTask_t usb_taskdef;
-void usb_task(void* param);
-
-/* this is used by this code, ./class/net/net_driver.c, and usb_descriptors.c */
-/* ideally speaking, this should be generated from the hardware's unique ID (if available) */
-/* it is suggested that the first byte is 0x02 to indicate a link-local address */
-const uint8_t tud_network_mac_address[6] = {0x02,0x02,0x84,0x6A,0x96,0x00};
+//--------------------------------------------------------------------+
+// Inter-task buffer 
+//--------------------------------------------------------------------+
 
 static uint8_t bufferUsbToLwip[ CFG_TUD_NET_MTU*3 ];
 StaticMessageBuffer_t usbToLwipMessageBufferStruct;
 MessageBufferHandle_t usbToLwipMessageBuffer;
 
 //--------------------------------------------------------------------+
-// USB network 
+// BLINKING TASK (toggle led)
 //--------------------------------------------------------------------+
+
+// led timer
+StaticTimer_t blinky_tmdef;
+TimerHandle_t blinky_tm;
+
+void led_blinky_cb(TimerHandle_t xTimer)
+{
+  (void) xTimer;
+  static bool led_state = false;
+
+  board_led_write(led_state);
+  led_state = 1 - led_state; // toggle
+}
+
+//--------------------------------------------------------------------+
+// USB network stack
+//--------------------------------------------------------------------+
+
+/* this is used by this code, ./class/net/net_driver.c, and usb_descriptors.c */
+/* ideally speaking, this should be generated from the hardware's unique ID (if available) */
+/* it is suggested that the first byte is 0x02 to indicate a link-local address */
+const uint8_t tud_network_mac_address[6] = {0x02,0x02,0x84,0x6A,0x96,0x00};
+
+// Increase stack size when debug log is enabled
+#define USBD_STACK_SIZE    (3*configMINIMAL_STACK_SIZE/2) * (CFG_TUSB_DEBUG ? 2 : 1)
+StackType_t  usb_stack[USBD_STACK_SIZE];
+StaticTask_t usb_taskdef;
+
+// Invoked when device is mounted
+void tud_mount_cb(void)
+{
+  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
+}
+
+// Invoked when device is unmounted
+void tud_umount_cb(void)
+{
+  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
+}
+
+// Invoked when usb bus is suspended
+// remote_wakeup_en : if host allow us to perform remote wakeup
+// Within 7ms, device must draw an average of current less than 2.5 mA from bus
+void tud_suspend_cb(bool remote_wakeup_en)
+{
+  (void) remote_wakeup_en;
+  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_SUSPENDED), 0);
+}
+
+// Invoked when usb bus is resumed
+void tud_resume_cb(void)
+{
+  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
+}
 
 void tud_network_init_cb(void)
 {
@@ -64,7 +111,7 @@ bool tud_network_recv_cb(const uint8_t *src, uint16_t size)
     return false;
   }
   
-  if( xMessageBufferSend(usbToLwipMessageBuffer, (void *) src, size, 0) != size)
+  if( xMessageBufferSend(usbToLwipMessageBuffer, (const void *) src, size, 0) != size)
   {
     return false;
   }
@@ -99,48 +146,33 @@ void usb_task(void* param)
   }
 }
 
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
 //--------------------------------------------------------------------+
-// Device callbacks
+// FREERTOS STATS TASK
 //--------------------------------------------------------------------+
 
-// Invoked when device is mounted
-void tud_mount_cb(void)
+// Freertos stats task
+void freertos_stats_task(void * param)
 {
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
-}
+  (void) param;
 
-// Invoked when device is unmounted
-void tud_umount_cb(void)
-{
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
+  char buffer[40 * 5];
+  uint32_t last_display = 0;
+  
+  while (1)
+  {
+    uint32_t current_ms = board_millis();
+    if (current_ms >= last_display + 5000 || current_ms < last_display)
+    {
+      vTaskList(buffer);
+      printf("Name\tState\tPriority\tFree\tId\n");
+      printf("%s\n", buffer);
+      last_display = current_ms;
+    } 
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
 }
-
-// Invoked when usb bus is suspended
-// remote_wakeup_en : if host allow us to perform remote wakeup
-// Within 7ms, device must draw an average of current less than 2.5 mA from bus
-void tud_suspend_cb(bool remote_wakeup_en)
-{
-  (void) remote_wakeup_en;
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_SUSPENDED), 0);
-}
-
-// Invoked when usb bus is resumed
-void tud_resume_cb(void)
-{
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
-}
-
-//--------------------------------------------------------------------+
-// BLINKING TASK (toggle led)
-//--------------------------------------------------------------------+
-void led_blinky_cb(TimerHandle_t xTimer)
-{
-  (void) xTimer;
-  static bool led_state = false;
-
-  board_led_write(led_state);
-  led_state = 1 - led_state; // toggle
-}
+#endif
 
 //--------------------------------------------------------------------+
 // Main
@@ -162,6 +194,11 @@ int main(void)
 
   // Create a task for network (lwip) stack
   create_net_task();
+
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+  // Create a task for freertos stats
+  xTaskCreate( freertos_stats_task, "stats", configMINIMAL_STACK_SIZE, ( void * ) NULL, configMAX_PRIORITIES-2, NULL );
+#endif
 
   // Start scheduler
   vTaskStartScheduler();
