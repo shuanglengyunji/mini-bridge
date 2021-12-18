@@ -126,11 +126,16 @@ SRC_C += \
   lib/FreeRTOS-Kernel/stream_buffer.c \
 	$(wildcard lib/FreeRTOS-Kernel/portable/GCC/$(FREERTOS_PORT)/*.c)
 
-# Debugging/Optimization
 ifeq ($(FREERTOS_STATS), 1)
   CFLAGS += -DFREERTOS_STATS_DISPLAY
   SRC_C += lib/FreeRTOS-Kernel/portable/MemMang/heap_4.c
 endif
+
+# Suppress FreeRTOS warnings
+CFLAGS += -Wno-error=cast-qual
+
+# FreeRTOS (lto + Os) linker issue
+LDFLAGS += -Wl,--undefined=vTaskSwitchContext
 
 # lwip sources
 INC += \
@@ -183,12 +188,10 @@ SRC_C += \
   lib/lwip/src/apps/http/fs.c \
   lib/tinyusb/lib/networking/dhserver.c \
   lib/tinyusb/lib/networking/rndis_reports.c
-  
-# Suppress FreeRTOS warnings
-CFLAGS += -Wno-error=cast-qual
 
-# FreeRTOS (lto + Os) linker issue
-LDFLAGS += -Wl,--undefined=vTaskSwitchContext
+ifeq ($(LWIP_STATS), 1)
+  CFLAGS += -DLWIP_STATS_DISPLAY
+endif
 
 # Suppress warning caused by lwip
 CFLAGS += \

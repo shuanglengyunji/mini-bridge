@@ -182,6 +182,7 @@ void net_task(void* params)
     if (current_ms >= last_display + LWIP_STATS_DISPLAY_PERIOD_MS || current_ms < last_display)
     {
       stats_display();
+      printf("\n");
       last_display = current_ms;
     }
 #endif /* LWIP_STATS_DISPLAY */
