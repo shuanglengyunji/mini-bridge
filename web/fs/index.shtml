@@ -1,40 +1,30 @@
 <html>
-<head>
-	<title>Mini bridge</title>
-</head>
+<head><title>Mini bridge</title></head>
 <body bgcolor="white" text="black">
 	<h1>Mini Bridge</h1>
-	<form id="myform" action="/text_cgi" method="GET">
+	<form action="/text_cgi" method="GET">
 		<table style="text-align: left">
 			<tr>
-				<th>
-					Listen
-				</th>
+				<th>Listen</th>
 				<th>
 					<input type="text" minlength="7" maxlength="15" size="15" name="server_address" 
 					value="<!--#SERADD-->"
 					pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
 				</th>
-				<th>
-					Port
-				</th>
+				<th>Port</th>
 				<th>
 					<input type="text" minlength="1" maxlength="6" name="server_port"
 					value="<!--#SERPORT-->">
 				</th>
 			</tr>
 			<tr>
-				<th>
-					Destination
-				</th>
+				<th>Destination</th>
 				<td >
 					<input type="text" minlength="7" maxlength="15" size="15" name="destination_address" 
 					value="<!--#DESTADD-->"
 					pattern="^((\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.){3}(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$">
 				</td>
-				<th>
-					Port
-				</th>
+				<th>Port</th>
 				<th>
 					<input type="text" minlength="1" maxlength="6" name="destination_port"
 					value="<!--#DESTPORT-->">
@@ -55,12 +45,9 @@
 				</th>
 			</tr>
 			<tr>
-				<td>
-					<button type="submit">Update</button>
-				</td>
+				<td><button type="submit">Update</button></td>
 			</tr>
 		</table>
 	</form>
 </body>
 </html>
-

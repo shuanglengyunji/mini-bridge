@@ -41,12 +41,12 @@
 // #define DHCP_DEBUG                      LWIP_DBG_ON
 // #define UDP_DEBUG                       LWIP_DBG_ON
 
-// #define LWIP_STATS                      1
-// #define LWIP_STATS_DISPLAY              1
-// #define LWIP_STATS_DISPLAY_PERIOD_MS    5000
+#define LWIP_STATS                      1
+#define LWIP_STATS_DISPLAY              1
+#define LWIP_STATS_DISPLAY_PERIOD_MS    5000
 
 /* Increase memory pool size for heavy data flow */
-#define MEM_SIZE   10000
+#define MEM_SIZE   10240
 
 /* Prevent having to link sys_arch.c (we don't test the API layers in unit tests) */
 #define NO_SYS                          1
