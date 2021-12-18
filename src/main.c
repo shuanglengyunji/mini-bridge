@@ -29,20 +29,36 @@
 #include "lwip/pbuf.h"
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-
 // Heap space for freertos task's dynamic memory allocation 
 uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+
+volatile uint32_t freertos_stats_ticks = 0;
+
+void freertos_config_stats_ticks(void)
+{
+  freertos_stats_ticks = 0;
+}
+
+uint32_t freertos_current_stats_ticks(void)
+{
+  freertos_stats_ticks = board_millis();
+  return freertos_stats_ticks;
+}
 
 //--------------------------------------------------------------------+
 // FREERTOS STATS TASK
 //--------------------------------------------------------------------+
+
+// Display buffer size, 40 bytes per task
+// see https://www.freertos.org/a00021.html for details 
+#define DISPLAY_BUFFER_SIZE         40 * 5
 
 // Freertos stats task
 void freertos_stats_task(void * param)
 {
   (void) param;
 
-  char buffer[40 * 5];
+  char buffer[DISPLAY_BUFFER_SIZE];
   uint32_t last_display = 0;
   
   while (1)
@@ -50,9 +66,17 @@ void freertos_stats_task(void * param)
     uint32_t current_ms = board_millis();
     if (current_ms >= last_display + 5000 || current_ms < last_display)
     {
+      vTaskGetRunTimeStats(buffer);
+      printf("Name\tCounter\t\tCPU\n");
+      printf("%s\n", buffer);
+
+      // BUG ??
+      // Starting from the second time, the free memory of this task (the 
+      // stats task) calculated by vTaskList is 0
       vTaskList(buffer);
       printf("Name\tState\tPriority\tFree\tId\n");
       printf("%s\n", buffer);
+
       last_display = current_ms;
     } 
     vTaskDelay(pdMS_TO_TICKS(1));
@@ -182,6 +206,11 @@ int main(void)
 {
   board_init();
 
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+  // Create a task for freertos stats
+  xTaskCreate( freertos_stats_task, "stats", configMINIMAL_STACK_SIZE, ( void * ) NULL, configMAX_PRIORITIES-3, NULL );
+#endif
+
   // create message buffer  
   usbToLwipMessageBuffer = xMessageBufferCreateStatic( sizeof( bufferUsbToLwip ), bufferUsbToLwip, &usbToLwipMessageBufferStruct);
   
@@ -194,11 +223,6 @@ int main(void)
 
   // Create a task for network (lwip) stack
   create_net_task();
-
-#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-  // Create a task for freertos stats
-  xTaskCreate( freertos_stats_task, "stats", configMINIMAL_STACK_SIZE, ( void * ) NULL, configMAX_PRIORITIES-2, NULL );
-#endif
 
   // Start scheduler
   vTaskStartScheduler();

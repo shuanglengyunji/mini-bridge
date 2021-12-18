@@ -45,18 +45,27 @@
 // Include MCU header
 #include "board_mcu.h"
 
-/* system monitor */
-#define FREERTOS_STATS_DISPLAY                  1
+/* System monitor */
+// #define FREERTOS_STATS_DISPLAY                  0    // Determined by Makefile
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+// export timebase functions to header 
+void freertos_config_stats_ticks(void);
+uint32_t freertos_current_stats_ticks(void);
+
 #define configTIMER_SERVICE_TASK_NAME           "tmr"
 #define configUSE_STATS_FORMATTING_FUNCTIONS    1
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 #define configTOTAL_HEAP_SIZE                   ( 1*1024 )
+#define configGENERATE_RUN_TIME_STATS           1
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS    freertos_config_stats_ticks
+#define portGET_RUN_TIME_COUNTER_VALUE            freertos_current_stats_ticks
+
 #else
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
 #define configSUPPORT_DYNAMIC_ALLOCATION        0
 #define configTOTAL_HEAP_SIZE                   ( 0*1024 ) // dynamic is not used
+#define configGENERATE_RUN_TIME_STATS           0
 #endif
 
 extern uint32_t SystemCoreClock;
@@ -97,7 +106,7 @@ extern uint32_t SystemCoreClock;
 #define configCHECK_FOR_STACK_OVERFLOW         2
 
 /* Run time and task stats gathering related definitions. */
-#define configGENERATE_RUN_TIME_STATS          0
+// #define configGENERATE_RUN_TIME_STATS          0
 #define configUSE_TRACE_FACILITY               1 // legacy trace
 // #define configUSE_STATS_FORMATTING_FUNCTIONS   0
 
