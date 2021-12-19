@@ -22,6 +22,9 @@ __check_defined = \
     $(if $(value $1),, \
     $(error Undefined make flag: $1$(if $2, ($2))))
 
+FREERTOS_STATS := 0
+LWIP_STATS := 0
+
 #-------------- Select the board to build for. ------------
 
 include $(BOARD)/board.mk
@@ -262,7 +265,7 @@ endif
 # Set all as default goal
 .DEFAULT_GOAL := all
 
-all: $(BUILD)/$(PROJECT).bin $(BUILD)/$(PROJECT).hex size
+all: $(BUILD)/$(PROJECT).bin $(BUILD)/$(PROJECT).hex compile_commands size
 	@echo Building $(PROJECT) in $(BUILD)
 
 OBJ_DIRS = $(sort $(dir $(OBJ)))
@@ -313,13 +316,15 @@ size: $(BUILD)/$(PROJECT).elf
 linkermap: $(BUILD)/$(PROJECT).elf
 	@linkermap -v $<.map
 
-.PHONY: clean web
+.PHONY: clean web compile_commands
 clean:
 	$(RM) -rf $(BUILD)
 
 web: 
 	cd web && ./makefsdata && cp ./fsdata.c ../src/asset/fsdata_mb.c
 
+compile_commands:
+	@./generate_compile_commands.sh FREERTOS_STATS=$(FREERTOS_STATS) LWIP_STATS=$(LWIP_STATS)
 # ---------------------------------------
 # Flash Targets
 # ---------------------------------------
