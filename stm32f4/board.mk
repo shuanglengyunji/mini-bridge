@@ -32,6 +32,12 @@ SRC_C += \
 	$(ST_HAL_DRIVER)/Src/stm32$(ST_FAMILY)xx_hal_uart.c \
 	$(ST_HAL_DRIVER)/Src/stm32$(ST_FAMILY)xx_hal_gpio.c
 
+ifeq ($(FREERTOS_STATS), 1)
+  SRC_C += \
+  	$(ST_HAL_DRIVER)/Src/stm32$(ST_FAMILY)xx_hal_tim.c \
+	$(ST_HAL_DRIVER)/Src/stm32$(ST_FAMILY)xx_hal_tim_ex.c
+endif
+
 INC += \
 	$(TOP)/lib/CMSIS_5/CMSIS/Core/Include \
 	$(TOP)/$(ST_CMSIS)/Include \

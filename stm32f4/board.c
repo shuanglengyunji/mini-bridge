@@ -44,7 +44,6 @@
 #define UART_TX_PIN           GPIO_PIN_9
 #define UART_RX_PIN           GPIO_PIN_10
 
-
 //--------------------------------------------------------------------+
 // RCC Clock
 //--------------------------------------------------------------------+
@@ -105,6 +104,11 @@ void OTG_HS_IRQHandler(void)
 // MACRO TYPEDEF CONSTANT ENUM
 //--------------------------------------------------------------------+
 UART_HandleTypeDef UartHandle;
+#if CFG_TUSB_OS == OPT_OS_FREERTOS
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+TIM_HandleTypeDef htim2;
+#endif
+#endif
 
 void board_init(void)
 {
@@ -186,6 +190,35 @@ void board_init(void)
   // Force device mode so the ID Pin can be ignored
   USB_OTG_FS->GUSBCFG &= ~USB_OTG_GUSBCFG_FHMOD;
   USB_OTG_FS->GUSBCFG |= USB_OTG_GUSBCFG_FDMOD;
+
+#if CFG_TUSB_OS == OPT_OS_FREERTOS
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+  // Init TIM2 CLK
+  __HAL_RCC_TIM2_CLK_ENABLE();
+
+  // If freeRTOS is used, IRQ priority is limit by max syscall ( smaller is higher )
+  NVIC_SetPriority(TIM2_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+
+  // Init TIM2
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 840-1;  // CLK=84MHz
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  HAL_TIM_Base_Init(&htim2);
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig);
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig);
+#endif
+#endif
 }
 
 //--------------------------------------------------------------------+
@@ -230,6 +263,28 @@ uint32_t board_millis(void)
 {
   return system_ticks;
 }
+#elif CFG_TUSB_OS == OPT_OS_FREERTOS
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+
+volatile uint32_t htim2_ticks = 0;
+
+void TIM2_IRQHandler(void)
+{
+  HAL_TIM_IRQHandler(&htim2);
+  htim2_ticks++;
+}
+
+void board_timer2_start(void)
+{
+  NVIC_EnableIRQ(TIM2_IRQn);
+  HAL_TIM_Base_Start_IT(&htim2);
+}
+
+uint32_t board_timer2_ticks(void)
+{
+  return htim2_ticks;
+}
+#endif
 #endif
 
 void HardFault_Handler (void)

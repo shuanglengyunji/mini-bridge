@@ -81,6 +81,16 @@ int board_uart_write(void const * buf, int len);
   #error "board_millis() is not implemented for this OS"
 #endif
 
+#if CFG_TUSB_OS == OPT_OS_FREERTOS
+#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
+// Start TIM2 at 100Khz
+void board_timer2_start(void);
+
+// Get TIM2 100KHz ticks
+uint32_t board_timer2_ticks(void);
+#endif
+#endif
+
 //--------------------------------------------------------------------+
 // Helper functions
 //--------------------------------------------------------------------+

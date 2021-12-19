@@ -32,19 +32,6 @@
 // Heap space for freertos task's dynamic memory allocation 
 uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
 
-volatile uint32_t freertos_stats_ticks = 0;
-
-void freertos_config_stats_ticks(void)
-{
-  freertos_stats_ticks = 0;
-}
-
-uint32_t freertos_current_stats_ticks(void)
-{
-  freertos_stats_ticks = board_millis();
-  return freertos_stats_ticks;
-}
-
 //--------------------------------------------------------------------+
 // FREERTOS STATS TASK
 //--------------------------------------------------------------------+

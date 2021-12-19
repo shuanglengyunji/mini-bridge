@@ -46,20 +46,22 @@
 #include "board_mcu.h"
 
 /* System monitor */
-// #define FREERTOS_STATS_DISPLAY                  0    // Determined by Makefile
+// #define FREERTOS_STATS_DISPLAY                  1    // Determined by Makefile
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-// export timebase functions to header 
-void freertos_config_stats_ticks(void);
-uint32_t freertos_current_stats_ticks(void);
+// BUG ??
+// Error occurs when includes "board.h"
+// Use explicit declaration of required functions as work around  
+void board_timer2_start(void);
+uint32_t board_timer2_ticks(void);
 
 #define configTIMER_SERVICE_TASK_NAME           "tmr"
 #define configUSE_STATS_FORMATTING_FUNCTIONS    1
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
 #define configTOTAL_HEAP_SIZE                   ( 1*1024 )
 #define configGENERATE_RUN_TIME_STATS           1
-#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS    freertos_config_stats_ticks
-#define portGET_RUN_TIME_COUNTER_VALUE            freertos_current_stats_ticks
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS  board_timer2_start
+#define portGET_RUN_TIME_COUNTER_VALUE          board_timer2_ticks
 
 #else
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
