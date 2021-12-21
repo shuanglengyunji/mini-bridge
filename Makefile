@@ -265,7 +265,7 @@ endif
 # Set all as default goal
 .DEFAULT_GOAL := all
 
-all: $(BUILD)/$(PROJECT).bin $(BUILD)/$(PROJECT).hex compile_commands size
+all: clean web $(BUILD)/$(PROJECT).bin $(BUILD)/$(PROJECT).hex compile_commands size
 	@echo Building $(PROJECT) in $(BUILD)
 
 OBJ_DIRS = $(sort $(dir $(OBJ)))
