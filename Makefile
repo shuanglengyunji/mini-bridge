@@ -22,6 +22,9 @@ __check_defined = \
     $(if $(value $1),, \
     $(error Undefined make flag: $1$(if $2, ($2))))
 
+FREERTOS_STATS := 0
+LWIP_STATS := 0
+
 #-------------- Select the board to build for. ------------
 
 include $(BOARD)/board.mk
@@ -126,6 +129,17 @@ SRC_C += \
   lib/FreeRTOS-Kernel/stream_buffer.c \
 	$(wildcard lib/FreeRTOS-Kernel/portable/GCC/$(FREERTOS_PORT)/*.c)
 
+ifeq ($(FREERTOS_STATS), 1)
+  CFLAGS += -DFREERTOS_STATS_DISPLAY
+  SRC_C += lib/FreeRTOS-Kernel/portable/MemMang/heap_4.c
+endif
+
+# Suppress FreeRTOS warnings
+CFLAGS += -Wno-error=cast-qual
+
+# FreeRTOS (lto + Os) linker issue
+LDFLAGS += -Wl,--undefined=vTaskSwitchContext
+
 # lwip sources
 INC += \
   lib/lwip/src/include \
@@ -177,12 +191,10 @@ SRC_C += \
   lib/lwip/src/apps/http/fs.c \
   lib/tinyusb/lib/networking/dhserver.c \
   lib/tinyusb/lib/networking/rndis_reports.c
-  
-# Suppress FreeRTOS warnings
-CFLAGS += -Wno-error=cast-qual
 
-# FreeRTOS (lto + Os) linker issue
-LDFLAGS += -Wl,--undefined=vTaskSwitchContext
+ifeq ($(LWIP_STATS), 1)
+  CFLAGS += -DLWIP_STATS_DISPLAY
+endif
 
 # Suppress warning caused by lwip
 CFLAGS += \
@@ -253,7 +265,7 @@ endif
 # Set all as default goal
 .DEFAULT_GOAL := all
 
-all: $(BUILD)/$(PROJECT).bin $(BUILD)/$(PROJECT).hex size
+all: clean web $(BUILD)/$(PROJECT).bin $(BUILD)/$(PROJECT).hex compile_commands size
 	@echo Building $(PROJECT) in $(BUILD)
 
 OBJ_DIRS = $(sort $(dir $(OBJ)))
@@ -304,13 +316,15 @@ size: $(BUILD)/$(PROJECT).elf
 linkermap: $(BUILD)/$(PROJECT).elf
 	@linkermap -v $<.map
 
-.PHONY: clean web
+.PHONY: clean web compile_commands
 clean:
 	$(RM) -rf $(BUILD)
 
 web: 
 	cd web && ./makefsdata && cp ./fsdata.c ../src/asset/fsdata_mb.c
 
+compile_commands:
+	@./generate_compile_commands.sh FREERTOS_STATS=$(FREERTOS_STATS) LWIP_STATS=$(LWIP_STATS)
 # ---------------------------------------
 # Flash Targets
 # ---------------------------------------
