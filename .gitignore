@@ -19,3 +19,4 @@ cov-int
 *-build-dir
 /_bin/
 /.vscode/
+compile_commands.json

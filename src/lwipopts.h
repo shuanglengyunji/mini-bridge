@@ -41,6 +41,15 @@
 // #define DHCP_DEBUG                      LWIP_DBG_ON
 // #define UDP_DEBUG                       LWIP_DBG_ON
 
+// #define LWIP_STATS_DISPLAY              1    // Determined by Makefile
+#if defined LWIP_STATS_DISPLAY && (LWIP_STATS_DISPLAY == 1)
+#define LWIP_STATS                      1   // LWIP_STATS is set to 1 by default in opt.h
+#define LWIP_STATS_DISPLAY_PERIOD_MS    5000
+#endif
+
+/* Increase memory pool size for heavy data flow */
+#define MEM_SIZE   10240
+
 /* Prevent having to link sys_arch.c (we don't test the API layers in unit tests) */
 #define NO_SYS                          1
 #define MEM_ALIGNMENT                   4
@@ -62,8 +71,9 @@
 
 #define ETHARP_SUPPORT_STATIC_ENTRIES   1
 
-#define LWIP_HTTPD_CGI                  0
-#define LWIP_HTTPD_SSI                  0
+#define LWIP_HTTPD_CGI                  1
+#define LWIP_HTTPD_SSI                  1
+#define LWIP_HTTPD_SSI_RAW              1
 #define LWIP_HTTPD_SSI_INCLUDE_TAG      0
 
 #define LWIP_SINGLE_NETIF               1
