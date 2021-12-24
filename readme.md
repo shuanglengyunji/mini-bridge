@@ -1,60 +1,20 @@
 # Mini Bridge
 
 Mini Bridge is a USB to serial adaptor for mobile devices (includes iPhone and iPad).
+## Setting up the Build Environment (Linux/Ubuntu)
 
-## Structure
-``` text
-.
-├── _build
-│   └── stm32f4
-├── compile_commands.json
-├── generate_compile_commands.sh
-├── inc
-├── lib
-│   ├── CMSIS_5
-│   ├── cmsis_device_f4
-│   ├── FreeRTOS-Kernel
-│   ├── lwip
-│   ├── stm32f4xx_hal_driver
-│   └── tinyusb
-├── Makefile
-├── readme.md
-├── src
-│   ├── arch
-│   ├── asset
-│   ├── FreeRTOSConfig
-│   ├── freertos_hook.c
-│   ├── lwipopts.h
-│   ├── main.c
-│   ├── main.h
-│   ├── net.c
-│   ├── net.h
-│   ├── ssi_example.cxx
-│   ├── tusb_config.h
-│   └── usb_descriptors.c
-├── stm32f4
-│   ├── board.c
-│   ├── board.h
-│   ├── board_mcu.h
-│   ├── board.mk
-│   ├── STM32F401VCTx_FLASH.ld
-│   ├── stm32f4xx_hal_conf.h
-│   └── utility.c
-└── web
-    ├── fs
-    ├── fsdata.c
-    └── makefsdata
+### Install `arm-none-eabi-*` toolchain
+Download `arm-none-eabi-*` tools from [gnu-toolchain](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads), extract files, and include `gcc-arm-none-eabi-xxx/bin/` to `$PATH` variable in ubuntu by adding the following line to ` ~/.bashrc`.
+``` bash
+export PATH="/absolute-path-to-gcc-arm-none-eabi-xxx/bin:$PATH"
 ```
+### Install `jq`
+``` bash
+> sudo apt install jq
+```
+## Build the code 
 
-Sources go in [src/](src/), board drivers go in [stm32f4/](stm32f4/), sources of web interface go in [web/](web/), third party libraries go in [lib/](lib/).
-
-## Building
-
-This project is designed to build with make. Make will determine submodules to initialise at the build time, so you won't need to initialise submodules. 
-
-The `arm-none-eabi-*` tools can be downloaded from [gnu-toolchain](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads).
-
-Example:
+This project is designed to build with `make` command. You won't need to initialise submodules because make will initialise required submodules for you. 
 
 ``` bash
 > git clone https://github.com/shuanglengyunji/mini-bridge.git
