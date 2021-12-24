@@ -24,7 +24,7 @@ This project is designed to build with `make` command. You won't need to initial
 
 ## Installation
 
-Use the [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) to flash the firmware in the bootload mode. 
+Use the [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) to flash the firmware in the bootloader mode. 
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
