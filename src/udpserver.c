@@ -1,13 +1,31 @@
 #include "udpserver.h"
-#include "lwip/pbuf.h"
-#include "lwip/udp.h"
-
-#define UDP_SERVER_PORT    8000   /* define the UDP local connection port */
+#include "string.h"
 
 struct ip4_addr dst_ip = IPADDR4_INIT_BYTES(192, 168, 7, 2);
 u16_t dst_port = 8000;
 
 struct udp_pcb *udp_server_pcb = NULL;
+
+void remote_device_deal(const struct ip4_addr *addr, u16_t port, uint8_t type)
+{
+  switch (type) 
+  {
+    case DATA_SPECIFIC_PORT: 
+      if(addr != &dst_ip || port != dst_port) 
+      {
+        return;
+      }
+    break;
+    case DATA_ALL_PORT: 
+    break;
+    case DATA_PORT_UPDATE: 
+      dst_ip = *addr;
+      dst_port = port;
+    break;
+    default:
+    break;
+  }
+}
 
 /**
   * @brief This function is called when an UDP datagrm has been received on the port UDP_PORT.
@@ -21,26 +39,24 @@ struct udp_pcb *udp_server_pcb = NULL;
 static void udp_echoserver_receive_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const struct ip4_addr *addr, u16_t port)
 {
   LWIP_UNUSED_ARG(arg);
-//   LWIP_UNUSED_ARG(upcb);
-
-  /*data loopback*/
+  //LWIP_UNUSED_ARG(upcb);
   udp_sendto(upcb, p, addr, port);
-
   /* Record remote client */
   dst_ip = *addr;
   dst_port = port;
-
   /* Free the p buffer */
   pbuf_free(p);
 }
 
 /**
   * @brief  Initialize the server application.
-  * @param  None
+  * @param  local_ip udp server ip
+  * @param  local_port udp server port
   * @retval None
   */
-void udp_echoserver_init(void)
+void udp_echoserver_init(ip_addr_t *local_ip, uint16_t local_port)
 { 
+  LWIP_UNUSED_ARG(local_ip);
   /* Create a new UDP control block  */
   udp_server_pcb = udp_new();
 
@@ -51,7 +67,7 @@ void udp_echoserver_init(void)
 
   /* Bind the upcb to the UDP_PORT port */
   /* Using IP_ADDR_ANY allow the upcb to be used by any local interface */
-  if (udp_bind(udp_server_pcb, IP_ADDR_ANY, UDP_SERVER_PORT) != ERR_OK) {
+  if (udp_bind(udp_server_pcb, IP_ADDR_ANY, local_port) != ERR_OK) {
     printf("can not bind udp pcb\n");
     memp_free(MEMP_UDP_PCB, udp_server_pcb);
     return;

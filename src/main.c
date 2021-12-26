@@ -267,13 +267,13 @@ uint8_t ucRxData[ 2048 ];
 void net_task(void* params)
 {
   (void) params;
-
+  ip_addr_t *server_ip = NULL;
   init_lwip();
   while (!netif_is_up(&netif_data));
   while (dhserv_init(&dhcp_config) != ERR_OK);
   httpd_init();
 
-  udp_echoserver_init();
+  udp_echoserver_init(server_ip, UDP_SERVER_PORT);
   
   // RTOS forever loop
   while ( 1 )
