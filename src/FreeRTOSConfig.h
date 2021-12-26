@@ -43,7 +43,7 @@
  *----------------------------------------------------------*/
 
 // Include MCU header
-#include "board_mcu.h"
+#include "stm32f4xx.h"
 
 /* System monitor */
 // #define FREERTOS_STATS_DISPLAY                  1    // Determined by Makefile

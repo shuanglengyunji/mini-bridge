@@ -104,10 +104,8 @@ void OTG_HS_IRQHandler(void)
 // MACRO TYPEDEF CONSTANT ENUM
 //--------------------------------------------------------------------+
 UART_HandleTypeDef UartHandle;
-#if CFG_TUSB_OS == OPT_OS_FREERTOS
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
 TIM_HandleTypeDef htim2;
-#endif
 #endif
 
 void board_init(void)
@@ -115,16 +113,11 @@ void board_init(void)
   board_clock_init();
   //SystemCoreClockUpdate();
 
-#if CFG_TUSB_OS == OPT_OS_NONE
-  // 1ms tick timer
-  SysTick_Config(SystemCoreClock / 1000);
-#elif CFG_TUSB_OS == OPT_OS_FREERTOS
   // Explicitly disable systick to prevent its ISR runs before scheduler start
   SysTick->CTRL &= ~1U;
 
   // If freeRTOS is used, IRQ priority is limit by max syscall ( smaller is higher )
   NVIC_SetPriority(OTG_FS_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY );
-#endif
 
   GPIO_InitTypeDef  GPIO_InitStruct;
 
@@ -191,7 +184,6 @@ void board_init(void)
   USB_OTG_FS->GUSBCFG &= ~USB_OTG_GUSBCFG_FHMOD;
   USB_OTG_FS->GUSBCFG |= USB_OTG_GUSBCFG_FDMOD;
 
-#if CFG_TUSB_OS == OPT_OS_FREERTOS
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
   // Init TIM2 CLK
   __HAL_RCC_TIM2_CLK_ENABLE();
@@ -217,7 +209,6 @@ void board_init(void)
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig);
-#endif
 #endif
 }
 
@@ -252,39 +243,22 @@ int board_uart_write(void const * buf, int len)
 #endif
 }
 
-#if CFG_TUSB_OS  == OPT_OS_NONE
-volatile uint32_t system_ticks = 0;
-void SysTick_Handler (void)
-{
-  system_ticks++;
-}
-
-uint32_t board_millis(void)
-{
-  return system_ticks;
-}
-#elif CFG_TUSB_OS == OPT_OS_FREERTOS
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-
 volatile uint32_t htim2_ticks = 0;
-
 void TIM2_IRQHandler(void)
 {
   HAL_TIM_IRQHandler(&htim2);
   htim2_ticks++;
 }
-
 void board_timer2_start(void)
 {
   NVIC_EnableIRQ(TIM2_IRQn);
   HAL_TIM_Base_Start_IT(&htim2);
 }
-
 uint32_t board_timer2_ticks(void)
 {
   return htim2_ticks;
 }
-#endif
 #endif
 
 void HardFault_Handler (void)
@@ -298,3 +272,43 @@ void _init(void)
 {
 
 }
+
+//--------------------------------------------------------------------+
+// newlib read()/write() retarget
+//--------------------------------------------------------------------+
+
+#define sys_write   _write
+#define sys_read    _read
+
+#if defined(LOGGER_SWO)
+// Logging with SWO for ARM Cortex
+TU_ATTR_USED int sys_write (int fhdl, const void *buf, size_t count)
+{
+  (void) fhdl;
+  uint8_t const* buf8 = (uint8_t const*) buf;
+  for(size_t i=0; i<count; i++)
+  {
+    ITM_SendChar(buf8[i]);
+  }
+  return count;
+}
+TU_ATTR_USED int sys_read (int fhdl, char *buf, size_t count)
+{
+  (void) fhdl;
+  (void) buf;
+  (void) count;
+  return 0;
+}
+#else
+// Default logging with on-board UART
+TU_ATTR_USED int sys_write (int fhdl, const void *buf, size_t count)
+{
+  (void) fhdl;
+  return board_uart_write(buf, (int) count);
+}
+TU_ATTR_USED int sys_read (int fhdl, char *buf, size_t count)
+{
+  (void) fhdl;
+  return board_uart_read((uint8_t*) buf, (int) count);
+}
+#endif
