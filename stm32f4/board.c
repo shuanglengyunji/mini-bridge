@@ -37,13 +37,6 @@
 #define BUTTON_PIN            GPIO_PIN_0
 #define BUTTON_STATE_ACTIVE   0
 
-// Enable PA2 as the debug log UART
-#define UART_DEV              USART1
-#define UART_GPIO_PORT        GPIOA
-#define UART_GPIO_AF          GPIO_AF7_USART1
-#define UART_TX_PIN           GPIO_PIN_9
-#define UART_RX_PIN           GPIO_PIN_10
-
 //--------------------------------------------------------------------+
 // RCC Clock
 //--------------------------------------------------------------------+
@@ -80,11 +73,12 @@ static inline void board_clock_init(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
   HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 
-  // Enable clocks for LED, Button, Uart
+  // Enable clocks for LED, Button, Uart, USB
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_USART1_CLK_ENABLE();
   __HAL_RCC_USART2_CLK_ENABLE();
+  __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
 }
 
 //--------------------------------------------------------------------+
@@ -95,11 +89,6 @@ void OTG_FS_IRQHandler(void)
   tud_int_handler(0);
 }
 
-void OTG_HS_IRQHandler(void)
-{
-  tud_int_handler(1);
-}
-
 //--------------------------------------------------------------------+
 // MACRO TYPEDEF CONSTANT ENUM
 //--------------------------------------------------------------------+
@@ -107,6 +96,20 @@ UART_HandleTypeDef UartHandle;
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
 TIM_HandleTypeDef htim2;
 #endif
+
+UART_HandleTypeDef Uart2Handle;
+void USART2_IRQHandler(void)
+{
+  uint32_t isrflags = READ_REG(Uart2Handle.Instance->SR);
+  if ((isrflags & USART_SR_RXNE) != RESET)
+  {
+    uint8_t data = (Uart2Handle.Instance->DR & (uint8_t)0x00FF);
+  }
+  if ((isrflags & USART_SR_TC) != RESET)
+  {
+    __HAL_UART_CLEAR_FLAG(&Uart2Handle, UART_FLAG_TC);
+  }
+}
 
 void board_init(void)
 {
@@ -137,17 +140,16 @@ void board_init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(BUTTON_PORT, &GPIO_InitStruct);
 
-#ifdef UART_DEV
   // UART
-  GPIO_InitStruct.Pin       = UART_TX_PIN | UART_RX_PIN;
+  GPIO_InitStruct.Pin       = GPIO_PIN_9 | GPIO_PIN_10;
   GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull      = GPIO_PULLUP;
   GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = UART_GPIO_AF;
-  HAL_GPIO_Init(UART_GPIO_PORT, &GPIO_InitStruct);
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   UartHandle = (UART_HandleTypeDef){
-    .Instance        = UART_DEV,
+    .Instance        = USART1,
     .Init.BaudRate   = CFG_BOARD_UART_BAUDRATE,
     .Init.WordLength = UART_WORDLENGTH_8B,
     .Init.StopBits   = UART_STOPBITS_1,
@@ -157,23 +159,37 @@ void board_init(void)
     .Init.OverSampling = UART_OVERSAMPLING_16
   };
   HAL_UART_Init(&UartHandle);
-#endif
 
-  /* Configure USB FS GPIOs */
-  __HAL_RCC_GPIOA_CLK_ENABLE();
+  // UART2
+  GPIO_InitStruct.Pin       = GPIO_PIN_2 | GPIO_PIN_3;
+  GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull      = GPIO_PULLUP;
+  GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /* Configure USB D+ D- Pins */
+  Uart2Handle = (UART_HandleTypeDef){
+    .Instance        = USART2,
+    .Init.BaudRate   = CFG_BOARD_UART_BAUDRATE,
+    .Init.WordLength = UART_WORDLENGTH_8B,
+    .Init.StopBits   = UART_STOPBITS_1,
+    .Init.Parity     = UART_PARITY_NONE,
+    .Init.HwFlowCtl  = UART_HWCONTROL_NONE,
+    .Init.Mode       = UART_MODE_TX_RX,
+    .Init.OverSampling = UART_OVERSAMPLING_16
+  };
+  HAL_UART_Init(&Uart2Handle);
+  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_RXNE);   // Enable the UART Data Register not empty Interrupt
+  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_TC);    // Enable the UART Transmit complete Interrupt
+
+  // USB
+  // Configure USB D+ D- Pins
   GPIO_InitStruct.Pin = GPIO_PIN_11 | GPIO_PIN_12;
   GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  // Enable USB OTG clock
-  __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
-
-//  __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
 
   // Blackpill doesn't use VBUS sense (B device) explicitly disable it
   USB_OTG_FS->GCCFG |= USB_OTG_GCCFG_NOVBUSSENS;
@@ -234,13 +250,8 @@ int board_uart_read(uint8_t* buf, int len)
 
 int board_uart_write(void const * buf, int len)
 {
-#ifdef UART_DEV
   HAL_UART_Transmit(&UartHandle, (uint8_t*)(uintptr_t) buf, len, 0xffff);
   return len;
-#else
-  (void) buf; (void) len; (void) UartHandle;
-  return 0;
-#endif
 }
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
