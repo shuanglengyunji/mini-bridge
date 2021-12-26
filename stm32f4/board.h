@@ -62,14 +62,6 @@ static inline uint32_t board_millis(void)
   return ( ( ((uint64_t) xTaskGetTickCount()) * 1000) / configTICK_RATE_HZ );
 }
 
-#if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-// Start TIM2 at 100Khz
-void board_timer2_start(void);
-
-// Get TIM2 100KHz ticks
-uint32_t board_timer2_ticks(void);
-#endif
-
 //--------------------------------------------------------------------+
 // Helper functions
 //--------------------------------------------------------------------+
@@ -81,19 +73,6 @@ static inline void board_led_on(void)
 static inline void board_led_off(void)
 {
   board_led_write(false);
-}
-
-// TODO remove
-static inline void board_delay(uint32_t ms)
-{
-  uint32_t start_ms = board_millis();
-  while (board_millis() - start_ms < ms)
-  {
-    #if TUSB_OPT_DEVICE_ENABLED
-    // take chance to run usb background
-    tud_task();
-    #endif
-  }
 }
 
 #ifdef __cplusplus
