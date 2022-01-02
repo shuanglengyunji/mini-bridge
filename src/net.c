@@ -7,7 +7,7 @@
 #include "httpd.h"
 
 // network task
-#define NET_STACK_SZIE      512
+#define NET_STACK_SZIE      1024
 StackType_t  net_stack[NET_STACK_SZIE];
 StaticTask_t net_taskdef;
 
@@ -186,6 +186,10 @@ void net_task(void* params)
       last_display = current_ms;
     }
 #endif /* LWIP_STATS_DISPLAY */
+
+    uint8_t pvData[100];
+    size_t bytes = board_uart2_read(pvData, sizeof(pvData));
+    board_uart2_write(pvData, bytes);
 
     vTaskDelay(pdMS_TO_TICKS(1));
   }

@@ -166,7 +166,6 @@ void board_init(void)
   NVIC_SetPriority(USART2_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
   NVIC_EnableIRQ(USART2_IRQn);
   __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_RXNE);   // Enable the UART Data Register not empty Interrupt
-  // __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_TC);    // Enable the UART Transmit complete Interrupt
 
   // USB
   // Configure USB D+ D- Pins
@@ -190,24 +189,20 @@ void board_init(void)
   // Init TIM2 CLK
   __HAL_RCC_TIM2_CLK_ENABLE();
 
-  // If freeRTOS is used, IRQ priority is limit by max syscall ( smaller is higher )
-  NVIC_SetPriority(TIM2_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+1);
-
   // Init TIM2
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
+  htim2.Init.Prescaler = 840;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 840-1;  // CLK=84MHz
+  htim2.Init.Period = 4294967295;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   HAL_TIM_Base_Init(&htim2);
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
   HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig);
 
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig);
@@ -294,20 +289,13 @@ void board_uart2_write(uint8_t * buf, uint32_t len)
 }
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-volatile uint32_t htim2_ticks = 0;
-void TIM2_IRQHandler(void)
-{
-  HAL_TIM_IRQHandler(&htim2);
-  htim2_ticks++;
-}
 void board_timer2_start(void)
 {
-  NVIC_EnableIRQ(TIM2_IRQn);
-  HAL_TIM_Base_Start_IT(&htim2);
+  HAL_TIM_Base_Start(&htim2);
 }
 uint32_t board_timer2_ticks(void)
 {
-  return htim2_ticks;
+  return __HAL_TIM_GET_COUNTER(&htim2);
 }
 #endif
 
