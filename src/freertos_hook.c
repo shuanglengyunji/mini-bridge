@@ -30,6 +30,8 @@
 #include "task.h"
 #include "common/tusb_common.h"
 
+// Heap space for freertos task's dynamic memory allocation 
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
 
 void vApplicationMallocFailedHook(void)
 {

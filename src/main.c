@@ -29,9 +29,6 @@
 #include "lwip/pbuf.h"
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
-// Heap space for freertos task's dynamic memory allocation 
-uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
-
 //--------------------------------------------------------------------+
 // FREERTOS STATS TASK
 //--------------------------------------------------------------------+
@@ -78,6 +75,8 @@ void freertos_stats_task(void * param)
 static uint8_t bufferUsbToLwip[ CFG_TUD_NET_MTU*3 ];
 StaticMessageBuffer_t usbToLwipMessageBufferStruct;
 MessageBufferHandle_t usbToLwipMessageBuffer;
+
+StreamBufferHandle_t fromUartStreamBuffer;
 
 //--------------------------------------------------------------------+
 // BLINKING TASK (toggle led)
@@ -200,6 +199,7 @@ int main(void)
 
   // create message buffer  
   usbToLwipMessageBuffer = xMessageBufferCreateStatic( sizeof( bufferUsbToLwip ), bufferUsbToLwip, &usbToLwipMessageBufferStruct);
+  fromUartStreamBuffer = xStreamBufferCreate(1024, 1);
   
   // Create a soft timer for blinky
   blinky_tm = xTimerCreateStatic(NULL, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), true, NULL, led_blinky_cb, &blinky_tmdef);

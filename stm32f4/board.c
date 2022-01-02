@@ -26,16 +26,20 @@
 
 #include "stm32f4xx_hal.h"
 #include "board.h"
+#include "main.h"
+
+#define TX_LED_PORT           GPIOB
+#define TX_LED_PIN            GPIO_PIN_6
+#define TX_LED_STATE_ON       0
+
+#define RX_LED_PORT           GPIOB
+#define RX_LED_PIN            GPIO_PIN_7
+#define RX_LED_STATE_ON       0
 
 // LED
-#define LED_PORT              GPIOC
-#define LED_PIN               GPIO_PIN_13
-#define LED_STATE_ON          0
-
-// Button
-#define BUTTON_PORT           GPIOA
-#define BUTTON_PIN            GPIO_PIN_0
-#define BUTTON_STATE_ACTIVE   0
+#define LED_PORT              TX_LED_PORT
+#define LED_PIN               TX_LED_PIN
+#define LED_STATE_ON          TX_LED_STATE_ON
 
 //--------------------------------------------------------------------+
 // RCC Clock
@@ -73,8 +77,9 @@ static inline void board_clock_init(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
   HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 
-  // Enable clocks for LED, Button, Uart, USB
+  // Enable clocks for LED, Uart, USB
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_USART1_CLK_ENABLE();
   __HAL_RCC_USART2_CLK_ENABLE();
@@ -100,15 +105,23 @@ TIM_HandleTypeDef htim2;
 UART_HandleTypeDef Uart2Handle;
 void USART2_IRQHandler(void)
 {
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE
+
   uint32_t isrflags = READ_REG(Uart2Handle.Instance->SR);
   if ((isrflags & USART_SR_RXNE) != RESET)
   {
-    uint8_t data = (Uart2Handle.Instance->DR & (uint8_t)0x00FF);
+    const uint8_t data = (Uart2Handle.Instance->DR & (uint8_t)0x00FF);
+    xStreamBufferSendFromISR(fromUartStreamBuffer, &data, 1, &xHigherPriorityTaskWoken);
   }
-  if ((isrflags & USART_SR_TC) != RESET)
-  {
-    __HAL_UART_CLEAR_FLAG(&Uart2Handle, UART_FLAG_TC);
-  }
+  // if ((isrflags & USART_SR_TC) != RESET)
+  // {
+  //   __HAL_UART_CLEAR_FLAG(&Uart2Handle, UART_FLAG_TC);
+  // }
+
+  // BUG?? Cannot find taskYIELD_FROM_ISR() in tasks.h
+  // Use taskYIELD_FROM_ISR() in accord with
+  // https://forums.freertos.org/t/taskyield-from-isr-portyield-from-isr-and-portend-switching-isr/12792
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );   // taskYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 void board_init(void)
@@ -119,7 +132,14 @@ void board_init(void)
   // Explicitly disable systick to prevent its ISR runs before scheduler start
   SysTick->CTRL &= ~1U;
 
-  // If freeRTOS is used, IRQ priority is limit by max syscall ( smaller is higher )
+  // Set NVIC to priority group 4 for STM32, which assigns all priority bits to preempt priority bits
+  // see https://www.freertos.org/RTOS-Cortex-M3-M4.html for details 
+  // the NVIC_PriorityGroupConfig function from the Standard Peripheral Library 
+  // is replaced by its HAL successor in our implementation 
+  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);  
+
+  // In freeRTOS, IRQ priority is limit by max syscall ( smaller is higher )
+  // Freertos use CMSIS's NVIC configuration function on its CM4 portings
   NVIC_SetPriority(OTG_FS_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY );
 
   GPIO_InitTypeDef  GPIO_InitStruct;
@@ -133,19 +153,20 @@ void board_init(void)
 
   board_led_write(false);
 
-  // Button
-  GPIO_InitStruct.Pin = BUTTON_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = BUTTON_STATE_ACTIVE ? GPIO_PULLDOWN : GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(BUTTON_PORT, &GPIO_InitStruct);
-
   // UART
   GPIO_InitStruct.Pin       = GPIO_PIN_9 | GPIO_PIN_10;
   GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull      = GPIO_PULLUP;
   GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  // UART2
+  GPIO_InitStruct.Pin       = GPIO_PIN_2 | GPIO_PIN_3;
+  GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull      = GPIO_PULLUP;
+  GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   UartHandle = (UART_HandleTypeDef){
@@ -160,14 +181,6 @@ void board_init(void)
   };
   HAL_UART_Init(&UartHandle);
 
-  // UART2
-  GPIO_InitStruct.Pin       = GPIO_PIN_2 | GPIO_PIN_3;
-  GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull      = GPIO_PULLUP;
-  GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   Uart2Handle = (UART_HandleTypeDef){
     .Instance        = USART2,
     .Init.BaudRate   = CFG_BOARD_UART_BAUDRATE,
@@ -179,8 +192,10 @@ void board_init(void)
     .Init.OverSampling = UART_OVERSAMPLING_16
   };
   HAL_UART_Init(&Uart2Handle);
+  NVIC_SetPriority(USART2_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+  NVIC_EnableIRQ(USART2_IRQn);
   __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_RXNE);   // Enable the UART Data Register not empty Interrupt
-  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_TC);    // Enable the UART Transmit complete Interrupt
+  // __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_TC);    // Enable the UART Transmit complete Interrupt
 
   // USB
   // Configure USB D+ D- Pins
@@ -205,7 +220,7 @@ void board_init(void)
   __HAL_RCC_TIM2_CLK_ENABLE();
 
   // If freeRTOS is used, IRQ priority is limit by max syscall ( smaller is higher )
-  NVIC_SetPriority(TIM2_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
+  NVIC_SetPriority(TIM2_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY+1);
 
   // Init TIM2
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
@@ -235,11 +250,6 @@ void board_init(void)
 void board_led_write(bool state)
 {
   HAL_GPIO_WritePin(LED_PORT, LED_PIN, state ? LED_STATE_ON : (1-LED_STATE_ON));
-}
-
-uint32_t board_button_read(void)
-{
-  return BUTTON_STATE_ACTIVE == HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN);
 }
 
 int board_uart_read(uint8_t* buf, int len)

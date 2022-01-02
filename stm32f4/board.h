@@ -44,18 +44,14 @@
 
 //--------------------------------------------------------------------+
 // Board Porting API
-// For simplicity, only one LED and one Button are used
+// For simplicity, only one LED is used
 //--------------------------------------------------------------------+
 
-// Initialize on-board peripherals : led, button, uart and USB
+// Initialize on-board peripherals : led, uart and USB
 void board_init(void);
 
 // Turn LED on or off
 void board_led_write(bool state);
-
-// Get the current state of button
-// a '1' means active (pressed), a '0' means inactive.
-uint32_t board_button_read(void);
 
 static inline uint32_t board_millis(void)
 {

@@ -57,16 +57,12 @@ uint32_t board_timer2_ticks(void);
 
 #define configTIMER_SERVICE_TASK_NAME           "tmr"
 #define configUSE_STATS_FORMATTING_FUNCTIONS    1
-#define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configTOTAL_HEAP_SIZE                   ( 1*1024 )
 #define configGENERATE_RUN_TIME_STATS           1
 #define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS  board_timer2_start
 #define portGET_RUN_TIME_COUNTER_VALUE          board_timer2_ticks
 
 #else
 #define configUSE_STATS_FORMATTING_FUNCTIONS    0
-#define configSUPPORT_DYNAMIC_ALLOCATION        0
-#define configTOTAL_HEAP_SIZE                   ( 0*1024 ) // dynamic is not used
 #define configGENERATE_RUN_TIME_STATS           0
 #endif
 
@@ -84,7 +80,7 @@ extern uint32_t SystemCoreClock;
 #define configTICK_RATE_HZ                      ( 1000 )
 #define configMAX_PRIORITIES                    ( 5 )
 #define configMINIMAL_STACK_SIZE                ( 128 )
-// #define configTOTAL_HEAP_SIZE                   ( 0*1024 ) // dynamic is not used
+#define configTOTAL_HEAP_SIZE                   ( 10*1024 ) // enable dynamic
 #define configMAX_TASK_NAME_LEN                 16
 #define configUSE_16_BIT_TICKS                  0
 #define configIDLE_SHOULD_YIELD                 1
@@ -99,7 +95,7 @@ extern uint32_t SystemCoreClock;
 #define configSTACK_ALLOCATION_FROM_SEPARATE_HEAP   0
 
 #define configSUPPORT_STATIC_ALLOCATION         1
-// #define configSUPPORT_DYNAMIC_ALLOCATION        0
+#define configSUPPORT_DYNAMIC_ALLOCATION        1
 
 /* Hook function related definitions. */
 #define configUSE_IDLE_HOOK                    0
