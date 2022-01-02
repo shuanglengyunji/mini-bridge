@@ -35,5 +35,6 @@ enum  {
 // Inter-task buffers
 extern MessageBufferHandle_t usbToLwipMessageBuffer;
 extern StreamBufferHandle_t fromUartStreamBuffer;
+extern StreamBufferHandle_t toUartStreamBuffer;
 
 #endif /* __MAIN_H__ */

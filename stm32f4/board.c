@@ -87,42 +87,13 @@ static inline void board_clock_init(void)
 }
 
 //--------------------------------------------------------------------+
-// Forward USB interrupt events to TinyUSB IRQ Handler
-//--------------------------------------------------------------------+
-void OTG_FS_IRQHandler(void)
-{
-  tud_int_handler(0);
-}
-
-//--------------------------------------------------------------------+
 // MACRO TYPEDEF CONSTANT ENUM
 //--------------------------------------------------------------------+
 UART_HandleTypeDef UartHandle;
+UART_HandleTypeDef Uart2Handle;
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
 TIM_HandleTypeDef htim2;
 #endif
-
-UART_HandleTypeDef Uart2Handle;
-void USART2_IRQHandler(void)
-{
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE
-
-  uint32_t isrflags = READ_REG(Uart2Handle.Instance->SR);
-  if ((isrflags & USART_SR_RXNE) != RESET)
-  {
-    const uint8_t data = (Uart2Handle.Instance->DR & (uint8_t)0x00FF);
-    xStreamBufferSendFromISR(fromUartStreamBuffer, &data, 1, &xHigherPriorityTaskWoken);
-  }
-  // if ((isrflags & USART_SR_TC) != RESET)
-  // {
-  //   __HAL_UART_CLEAR_FLAG(&Uart2Handle, UART_FLAG_TC);
-  // }
-
-  // BUG?? Cannot find taskYIELD_FROM_ISR() in tasks.h
-  // Use taskYIELD_FROM_ISR() in accord with
-  // https://forums.freertos.org/t/taskyield-from-isr-portyield-from-isr-and-portend-switching-isr/12792
-  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );   // taskYIELD_FROM_ISR( xHigherPriorityTaskWoken );
-}
 
 void board_init(void)
 {
@@ -161,14 +132,6 @@ void board_init(void)
   GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  // UART2
-  GPIO_InitStruct.Pin       = GPIO_PIN_2 | GPIO_PIN_3;
-  GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull      = GPIO_PULLUP;
-  GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   UartHandle = (UART_HandleTypeDef){
     .Instance        = USART1,
     .Init.BaudRate   = CFG_BOARD_UART_BAUDRATE,
@@ -180,6 +143,14 @@ void board_init(void)
     .Init.OverSampling = UART_OVERSAMPLING_16
   };
   HAL_UART_Init(&UartHandle);
+
+  // UART2
+  GPIO_InitStruct.Pin       = GPIO_PIN_2 | GPIO_PIN_3;
+  GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull      = GPIO_PULLUP;
+  GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   Uart2Handle = (UART_HandleTypeDef){
     .Instance        = USART2,
@@ -244,6 +215,47 @@ void board_init(void)
 }
 
 //--------------------------------------------------------------------+
+// Forward USB interrupt events to TinyUSB IRQ Handler
+//--------------------------------------------------------------------+
+void OTG_FS_IRQHandler(void)
+{
+  tud_int_handler(0);
+}
+
+//--------------------------------------------------------------------+
+// Handle USART2 interrupt transmission
+//--------------------------------------------------------------------+
+
+void USART2_IRQHandler(void)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE
+
+  uint32_t isrflags = READ_REG(Uart2Handle.Instance->SR);
+  if ((isrflags & USART_SR_RXNE) != RESET)
+  {
+    const uint8_t data = (Uart2Handle.Instance->DR & (uint8_t)0x00FF);
+    xStreamBufferSendFromISR(fromUartStreamBuffer, &data, 1, &xHigherPriorityTaskWoken);
+  }
+  if ((isrflags & USART_SR_TXE) != RESET)
+  {
+    uint8_t data;
+    if (xStreamBufferReceiveFromISR(toUartStreamBuffer, &data, 1, &xHigherPriorityTaskWoken))
+    {
+      Uart2Handle.Instance->DR = data;
+    }
+    else
+    {
+      __HAL_UART_DISABLE_IT(&Uart2Handle, UART_IT_TXE);
+    }
+  }
+
+  // BUG?? Cannot find taskYIELD_FROM_ISR() in tasks.h
+  // Use taskYIELD_FROM_ISR() in accord with
+  // https://forums.freertos.org/t/taskyield-from-isr-portyield-from-isr-and-portend-switching-isr/12792
+  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );   // taskYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+}
+
+//--------------------------------------------------------------------+
 // Board porting API
 //--------------------------------------------------------------------+
 
@@ -262,6 +274,23 @@ int board_uart_write(void const * buf, int len)
 {
   HAL_UART_Transmit(&UartHandle, (uint8_t*)(uintptr_t) buf, len, 0xffff);
   return len;
+}
+
+uint32_t board_uart2_read(uint8_t* buf, uint32_t len)
+{
+  return xStreamBufferReceive(fromUartStreamBuffer, (void *)buf, len, 0);
+}
+
+void board_uart2_write(uint8_t * buf, uint32_t len)
+{
+  if (len <= 0)
+  {
+    return;
+  }
+  // TODO: check fifo space before sending
+  // TODO: return sent bytes 
+  xStreamBufferSend(toUartStreamBuffer, (void *)buf, len, 0);
+  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_TXE);
 }
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)

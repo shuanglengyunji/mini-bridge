@@ -53,6 +53,10 @@ void board_init(void);
 // Turn LED on or off
 void board_led_write(bool state);
 
+// USART2 function
+uint32_t board_uart2_read(uint8_t* buf, uint32_t len);
+void board_uart2_write(uint8_t * buf, uint32_t len);
+
 static inline uint32_t board_millis(void)
 {
   return ( ( ((uint64_t) xTaskGetTickCount()) * 1000) / configTICK_RATE_HZ );

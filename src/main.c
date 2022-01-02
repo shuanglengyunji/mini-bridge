@@ -77,6 +77,7 @@ StaticMessageBuffer_t usbToLwipMessageBufferStruct;
 MessageBufferHandle_t usbToLwipMessageBuffer;
 
 StreamBufferHandle_t fromUartStreamBuffer;
+StreamBufferHandle_t toUartStreamBuffer;
 
 //--------------------------------------------------------------------+
 // BLINKING TASK (toggle led)
@@ -200,6 +201,7 @@ int main(void)
   // create message buffer  
   usbToLwipMessageBuffer = xMessageBufferCreateStatic( sizeof( bufferUsbToLwip ), bufferUsbToLwip, &usbToLwipMessageBufferStruct);
   fromUartStreamBuffer = xStreamBufferCreate(1024, 1);
+  toUartStreamBuffer = xStreamBufferCreate(1024, 1);
   
   // Create a soft timer for blinky
   blinky_tm = xTimerCreateStatic(NULL, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), true, NULL, led_blinky_cb, &blinky_tmdef);
