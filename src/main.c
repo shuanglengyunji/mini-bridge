@@ -83,18 +83,18 @@ StreamBufferHandle_t toUartStreamBuffer;
 // BLINKING TASK (toggle led)
 //--------------------------------------------------------------------+
 
-// led timer
-StaticTimer_t blinky_tmdef;
-TimerHandle_t blinky_tm;
+// // led timer
+// StaticTimer_t blinky_tmdef;
+// TimerHandle_t blinky_tm;
 
-void led_blinky_cb(TimerHandle_t xTimer)
-{
-  (void) xTimer;
-  static bool led_state = false;
+// void led_blinky_cb(TimerHandle_t xTimer)
+// {
+//   (void) xTimer;
+//   static bool led_state = false;
 
-  board_led_write(led_state);
-  led_state = 1 - led_state; // toggle
-}
+//   board_led_write(led_state);
+//   led_state = 1 - led_state; // toggle
+// }
 
 //--------------------------------------------------------------------+
 // USB network stack
@@ -113,13 +113,13 @@ StaticTask_t usb_taskdef;
 // Invoked when device is mounted
 void tud_mount_cb(void)
 {
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
+  // xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void)
 {
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
+  // xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
 }
 
 // Invoked when usb bus is suspended
@@ -128,13 +128,13 @@ void tud_umount_cb(void)
 void tud_suspend_cb(bool remote_wakeup_en)
 {
   (void) remote_wakeup_en;
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_SUSPENDED), 0);
+  // xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_SUSPENDED), 0);
 }
 
 // Invoked when usb bus is resumed
 void tud_resume_cb(void)
 {
-  xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
+  // xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
 }
 
 void tud_network_init_cb(void)
@@ -203,9 +203,9 @@ int main(void)
   fromUartStreamBuffer = xStreamBufferCreate(1024, 1);
   toUartStreamBuffer = xStreamBufferCreate(1024, 1);
   
-  // Create a soft timer for blinky
-  blinky_tm = xTimerCreateStatic(NULL, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), true, NULL, led_blinky_cb, &blinky_tmdef);
-  xTimerStart(blinky_tm, 0);
+  // // Create a soft timer for blinky
+  // blinky_tm = xTimerCreateStatic(NULL, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), true, NULL, led_blinky_cb, &blinky_tmdef);
+  // xTimerStart(blinky_tm, 0);
 
   // Create a task for tinyusb device stack
   (void) xTaskCreateStatic( usb_task, "usbd", USBD_STACK_SIZE, NULL, configMAX_PRIORITIES-1, usb_stack, &usb_taskdef);

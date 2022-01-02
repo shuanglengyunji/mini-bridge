@@ -1,45 +1,18 @@
-/* 
- * The MIT License (MIT)
- *
- * Copyright (c) 2019 Ha Thach (tinyusb.org)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This file is part of the TinyUSB stack.
- */
-
 #include "stm32f4xx_hal.h"
 #include "board.h"
 #include "main.h"
 
+// LED
 #define TX_LED_PORT           GPIOB
 #define TX_LED_PIN            GPIO_PIN_6
-#define TX_LED_STATE_ON       0
+#define TX_LED_STATE_ON       1
 
 #define RX_LED_PORT           GPIOB
 #define RX_LED_PIN            GPIO_PIN_7
-#define RX_LED_STATE_ON       0
+#define RX_LED_STATE_ON       1
 
-// LED
-#define LED_PORT              TX_LED_PORT
-#define LED_PIN               TX_LED_PIN
-#define LED_STATE_ON          TX_LED_STATE_ON
+void board_tx_led_write(bool state);
+void board_rx_led_write(bool state);
 
 //--------------------------------------------------------------------+
 // RCC Clock
@@ -116,13 +89,20 @@ void board_init(void)
   GPIO_InitTypeDef  GPIO_InitStruct;
 
   // LED
-  GPIO_InitStruct.Pin = LED_PIN;
+  GPIO_InitStruct.Pin = TX_LED_PIN;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(LED_PORT, &GPIO_InitStruct);
+  HAL_GPIO_Init(TX_LED_PORT, &GPIO_InitStruct);
 
-  board_led_write(false);
+  GPIO_InitStruct.Pin = RX_LED_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(RX_LED_PORT, &GPIO_InitStruct);
+
+  board_tx_led_write(false);
+  board_rx_led_write(false);
 
   // UART
   GPIO_InitStruct.Pin       = GPIO_PIN_9 | GPIO_PIN_10;
@@ -165,7 +145,9 @@ void board_init(void)
   HAL_UART_Init(&Uart2Handle);
   NVIC_SetPriority(USART2_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY);
   NVIC_EnableIRQ(USART2_IRQn);
-  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_RXNE);   // Enable the UART Data Register not empty Interrupt
+  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_RXNE);   // RX not empty
+  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_IDLE);   // RX idle
+  __HAL_UART_ENABLE_IT(&Uart2Handle, UART_IT_TC);     // TX complete
 
   // USB
   // Configure USB D+ D- Pins
@@ -225,25 +207,37 @@ void USART2_IRQHandler(void)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE; // Initialised to pdFALSE
 
-  uint32_t isrflags = READ_REG(Uart2Handle.Instance->SR);
-  if ((isrflags & USART_SR_RXNE) != RESET)
+  uint32_t isrflags = Uart2Handle.Instance->SR;
+  uint32_t cr1its = Uart2Handle.Instance->CR1;
+  if (((isrflags & USART_SR_RXNE) != RESET) && ((cr1its & USART_CR1_RXNEIE) != RESET))
   {
-    const uint8_t data = (Uart2Handle.Instance->DR & (uint8_t)0x00FF);
+    uint8_t data = Uart2Handle.Instance->DR & (uint8_t)0x00FF;
+    board_rx_led_write(true);
     xStreamBufferSendFromISR(fromUartStreamBuffer, &data, 1, &xHigherPriorityTaskWoken);
   }
-  if ((isrflags & USART_SR_TXE) != RESET)
+  if (((isrflags & USART_SR_IDLE) != RESET) && ((cr1its & USART_CR1_IDLEIE) != RESET))
+  {
+    __HAL_UART_CLEAR_IDLEFLAG(&Uart2Handle);
+    board_rx_led_write(false);
+  }
+  if (((isrflags & USART_SR_TXE) != RESET) && ((cr1its & USART_CR1_TXEIE) != RESET))
   {
     uint8_t data;
     if (xStreamBufferReceiveFromISR(toUartStreamBuffer, &data, 1, &xHigherPriorityTaskWoken))
     {
       Uart2Handle.Instance->DR = data;
+      board_tx_led_write(true);
     }
     else
     {
       __HAL_UART_DISABLE_IT(&Uart2Handle, UART_IT_TXE);
     }
   }
-
+  if (((isrflags & USART_SR_TC) != RESET) && ((cr1its & USART_CR1_TCIE) != RESET))
+  {
+    __HAL_UART_CLEAR_FLAG(&Uart2Handle, USART_SR_TC);
+    board_tx_led_write(false);
+  }
   // BUG?? Cannot find taskYIELD_FROM_ISR() in tasks.h
   // Use taskYIELD_FROM_ISR() in accord with
   // https://forums.freertos.org/t/taskyield-from-isr-portyield-from-isr-and-portend-switching-isr/12792
@@ -254,9 +248,14 @@ void USART2_IRQHandler(void)
 // Board porting API
 //--------------------------------------------------------------------+
 
-void board_led_write(bool state)
+void board_tx_led_write(bool state)
 {
-  HAL_GPIO_WritePin(LED_PORT, LED_PIN, state ? LED_STATE_ON : (1-LED_STATE_ON));
+  HAL_GPIO_WritePin(TX_LED_PORT, TX_LED_PIN, state ? TX_LED_STATE_ON : (1-TX_LED_STATE_ON));
+}
+
+void board_rx_led_write(bool state)
+{
+  HAL_GPIO_WritePin(RX_LED_PORT, RX_LED_PIN, state ? RX_LED_STATE_ON : (1-RX_LED_STATE_ON));
 }
 
 int board_uart_read(uint8_t* buf, int len)
