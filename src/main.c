@@ -48,15 +48,6 @@ MessageBufferHandle_t usbToLwipMessageBuffer;
 StreamBufferHandle_t fromUartStreamBuffer;
 StreamBufferHandle_t toUartStreamBuffer;
 
-//--------------------------------------------------------------------+
-// SPEED STATS TASK
-//--------------------------------------------------------------------+
-
-// void stats_cb(TimerHandle_t xTimer)
-// {
-//   (void) xTimer;
-//   printf("print from timer\n");
-// }
 
 //--------------------------------------------------------------------+
 // USB network stack
@@ -157,10 +148,6 @@ int main(void)
   // Create a task for freertos stats
   xTaskCreate( freertos_stats_task, "stats", configMINIMAL_STACK_SIZE, ( void * ) NULL, configMAX_PRIORITIES-3, NULL );
 #endif
-
-  // // Create a soft timer for stats
-  // TimerHandle_t stats_tm = xTimerCreate("timer", pdMS_TO_TICKS(1000), pdTRUE, ( void * ) 0, stats_cb);
-  // xTimerStart(stats_tm, 0);
 
   // create message buffer  
   usbToLwipMessageBuffer = xMessageBufferCreateStatic( sizeof( bufferUsbToLwip ), bufferUsbToLwip, &usbToLwipMessageBufferStruct);
