@@ -116,7 +116,7 @@ extern uint32_t SystemCoreClock;
 #define configUSE_TIMERS                       1
 #define configTIMER_TASK_PRIORITY              (configMAX_PRIORITIES-2)
 #define configTIMER_QUEUE_LENGTH               32
-#define configTIMER_TASK_STACK_DEPTH           configMINIMAL_STACK_SIZE
+#define configTIMER_TASK_STACK_DEPTH           512
 
 /* Optional functions - most linkers will remove unused functions anyway. */
 #define INCLUDE_vTaskPrioritySet               0
