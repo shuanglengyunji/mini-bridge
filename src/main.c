@@ -8,26 +8,23 @@
 // FREERTOS STATS TASK
 //--------------------------------------------------------------------+
 
-// Display buffer size, 40 bytes per task
-// see https://www.freertos.org/a00021.html for details 
-#define DISPLAY_BUFFER_SIZE         40 * 5
+#define STATS_STACK_SIZE             512
 
 // Freertos stats task
 void freertos_stats_task(void * param)
 {
   (void) param;
 
-  char buffer[DISPLAY_BUFFER_SIZE];
-  
+  // Display buffer size, 40 bytes per task
+  // see https://www.freertos.org/a00021.html for details 
+  char buffer[40 * 5];
+
   while (1)
   {
     vTaskGetRunTimeStats(buffer);
     printf("Name\tCounter\t\tCPU\n");
     printf("%s\n", buffer);
 
-    // BUG ??
-    // Starting from the second time, the free memory of this task (the 
-    // stats task) calculated by vTaskList is 0
     vTaskList(buffer);
     printf("Name\tState\tPriority\tFree\tId\n");
     printf("%s\n", buffer);
@@ -47,7 +44,6 @@ MessageBufferHandle_t usbToLwipMessageBuffer;
 
 StreamBufferHandle_t fromUartStreamBuffer;
 StreamBufferHandle_t toUartStreamBuffer;
-
 
 //--------------------------------------------------------------------+
 // USB network stack
@@ -146,7 +142,7 @@ int main(void)
 
 #if defined FREERTOS_STATS_DISPLAY && (FREERTOS_STATS_DISPLAY == 1)
   // Create a task for freertos stats
-  xTaskCreate( freertos_stats_task, "stats", configMINIMAL_STACK_SIZE, ( void * ) NULL, configMAX_PRIORITIES-3, NULL );
+  xTaskCreate( freertos_stats_task, "stats", STATS_STACK_SIZE, ( void * ) NULL, configMAX_PRIORITIES-3, NULL );
 #endif
 
   // create message buffer  
