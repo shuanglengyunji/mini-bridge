@@ -30,9 +30,12 @@
 #include "task.h"
 #include "common/tusb_common.h"
 
+// Heap space for freertos task's dynamic memory allocation 
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
 
 void vApplicationMallocFailedHook(void)
 {
+  printf("MallocFailed\n");
   taskDISABLE_INTERRUPTS();
   TU_ASSERT(false, );
 }
@@ -40,8 +43,8 @@ void vApplicationMallocFailedHook(void)
 void vApplicationStackOverflowHook(xTaskHandle pxTask, char *pcTaskName)
 {
   (void) pxTask;
-  (void) pcTaskName;
 
+  printf("\vStackOverflow: %s\n", pcTaskName);
   taskDISABLE_INTERRUPTS();
   TU_ASSERT(false, );
 }
